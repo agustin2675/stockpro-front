@@ -1,0 +1,154 @@
+{
+  "UnidadDeMedida": [
+    { "id": 1, "nombre": "Unidad" },
+    { "id": 2, "nombre": "Kg" },
+    { "id": 3, "nombre": "Lt" },
+    { "id": 4, "nombre": "Paquete" },
+    { "id": 5, "nombre": "Caja" },
+    { "id": 6, "nombre": "Rollo" }
+  ],
+
+  "Rubro": [
+    { "id": 1, "nombre": "Verduras", "activo": true, "tipoStock_id": 1 },
+    { "id": 2, "nombre": "Lácteos", "activo": true, "tipoStock_id": 1 },
+    { "id": 3, "nombre": "Carnes", "activo": true, "tipoStock_id": 1 },
+
+    { "id": 4, "nombre": "Envases", "activo": true, "tipoStock_id": 2 },
+    { "id": 5, "nombre": "Limpieza", "activo": true, "tipoStock_id": 2 },
+
+    { "id": 6, "nombre": "Bebidas", "activo": true, "tipoStock_id": 3 },
+    { "id": 7, "nombre": "Snacks", "activo": true, "tipoStock_id": 3 },
+
+    { "id": 8, "nombre": "Panadería", "activo": true, "tipoStock_id": 4 },
+    { "id": 9, "nombre": "Pastas", "activo": true, "tipoStock_id": 4 }
+  ],
+
+  "TipoStock": [
+    { "id": 1, "nombre": "Diario", "activo": true },
+    { "id": 2, "nombre": "Descartables", "activo": true },
+    { "id": 3, "nombre": "Cantina", "activo": true },
+    { "id": 4, "nombre": "Producción", "activo": true },
+    { "id": 5, "nombre": "Pedido", "activo": true }
+  ],
+
+  "Sucursal": [
+    { "id": 1, "nombre": "Sucursal Centro", "direccion": "Av. Central 123", "telefono": "1111-1111", "activo": true },
+    { "id": 2, "nombre": "Sucursal Norte", "direccion": "Av. Norte 456", "telefono": "2222-2222", "activo": true },
+    { "id": 3, "nombre": "Sucursal Sur", "direccion": "Av. Sur 789", "telefono": "3333-3333", "activo": true },
+    { "id": 4, "nombre": "Fabrica", "direccion": "Av. Sur 789", "telefono": "3333-3333", "activo": true }
+  ],
+
+  "Insumo": [
+    { "id": 1,  "nombre": "Tomate",           "activo": true, "rubro_id": 1, "unidadDeMedida_id": 2 },
+    { "id": 2,  "nombre": "Lechuga",          "activo": true, "rubro_id": 1, "unidadDeMedida_id": 2 },
+    { "id": 3,  "nombre": "Cebolla",          "activo": true, "rubro_id": 1, "unidadDeMedida_id": 2 },
+    { "id": 4,  "nombre": "Zanahoria",        "activo": true, "rubro_id": 1, "unidadDeMedida_id": 2 },
+
+    { "id": 5,  "nombre": "Leche entera",     "activo": true, "rubro_id": 2, "unidadDeMedida_id": 3 },
+    { "id": 6,  "nombre": "Queso cremoso",    "activo": true, "rubro_id": 2, "unidadDeMedida_id": 1 },
+    { "id": 7,  "nombre": "Yogur natural",    "activo": true, "rubro_id": 2, "unidadDeMedida_id": 1 },
+
+    { "id": 8,  "nombre": "Pollo",            "activo": true, "rubro_id": 3, "unidadDeMedida_id": 2 },
+    { "id": 9,  "nombre": "Carne vacuna",     "activo": true, "rubro_id": 3, "unidadDeMedida_id": 2 },
+    { "id": 10, "nombre": "Jamón",            "activo": true, "rubro_id": 3, "unidadDeMedida_id": 1 },
+
+    { "id": 11, "nombre": "Caja para pizza",  "activo": true, "rubro_id": 4, "unidadDeMedida_id": 5 },
+    { "id": 12, "nombre": "Film (rollo)",     "activo": true, "rubro_id": 4, "unidadDeMedida_id": 6 },
+    { "id": 13, "nombre": "Bolsas residuos",  "activo": true, "rubro_id": 4, "unidadDeMedida_id": 4 },
+
+    { "id": 14, "nombre": "Lavandina",        "activo": true, "rubro_id": 5, "unidadDeMedida_id": 3 },
+    { "id": 15, "nombre": "Detergente",       "activo": true, "rubro_id": 5, "unidadDeMedida_id": 3 },
+    { "id": 16, "nombre": "Guantes nitrilo",  "activo": true, "rubro_id": 5, "unidadDeMedida_id": 4 },
+
+    { "id": 17, "nombre": "Agua 500 ml",      "activo": true, "rubro_id": 6, "unidadDeMedida_id": 1 },
+    { "id": 18, "nombre": "Gaseosa cola 1.5L","activo": true, "rubro_id": 6, "unidadDeMedida_id": 1 },
+    { "id": 19, "nombre": "Jugo naranja",     "activo": true, "rubro_id": 6, "unidadDeMedida_id": 1 },
+
+    { "id": 20, "nombre": "Papas fritas 50g", "activo": true, "rubro_id": 7, "unidadDeMedida_id": 4 },
+    { "id": 21, "nombre": "Maní salado",      "activo": true, "rubro_id": 7, "unidadDeMedida_id": 4 },
+    { "id": 22, "nombre": "Alfajor",          "activo": true, "rubro_id": 7, "unidadDeMedida_id": 1 },
+
+    { "id": 23, "nombre": "Harina 000",       "activo": true, "rubro_id": 8, "unidadDeMedida_id": 2 },
+    { "id": 24, "nombre": "Levadura seca",    "activo": true, "rubro_id": 8, "unidadDeMedida_id": 4 },
+    { "id": 25, "nombre": "Azúcar",           "activo": true, "rubro_id": 8, "unidadDeMedida_id": 2 },
+    { "id": 26, "nombre": "Margarina",        "activo": true, "rubro_id": 8, "unidadDeMedida_id": 2 },
+
+    { "id": 27, "nombre": "Fideos spaguetti", "activo": true, "rubro_id": 9, "unidadDeMedida_id": 4 },
+    { "id": 28, "nombre": "Fideos moño",      "activo": true, "rubro_id": 9, "unidadDeMedida_id": 4 },
+    { "id": 29, "nombre": "Salsa tomate lata","activo": true, "rubro_id": 9, "unidadDeMedida_id": 1 }
+  ],
+
+  "SucursalInsumo": [
+    { "id": 1,  "sucursal_id": 1, "insumo_id": 1,  "cantidadReal": 10, "cantidadIdeal": 15 },
+    { "id": 2,  "sucursal_id": 1, "insumo_id": 2,  "cantidadReal": 6,  "cantidadIdeal": 10 },
+    { "id": 3,  "sucursal_id": 1, "insumo_id": 5,  "cantidadReal": 20, "cantidadIdeal": 20 },
+    { "id": 4,  "sucursal_id": 1, "insumo_id": 11, "cantidadReal": 3,  "cantidadIdeal": 5 },
+    { "id": 5,  "sucursal_id": 1, "insumo_id": 14, "cantidadReal": 4,  "cantidadIdeal": 6 },
+    { "id": 6,  "sucursal_id": 1, "insumo_id": 23, "cantidadReal": 25, "cantidadIdeal": 30 },
+
+    { "id": 7,  "sucursal_id": 2, "insumo_id": 3,  "cantidadReal": 8,  "cantidadIdeal": 12 },
+    { "id": 8,  "sucursal_id": 2, "insumo_id": 6,  "cantidadReal": 5,  "cantidadIdeal": 8 },
+    { "id": 9,  "sucursal_id": 2, "insumo_id": 18, "cantidadReal": 15, "cantidadIdeal": 15 },
+    { "id": 10, "sucursal_id": 2, "insumo_id": 20, "cantidadReal": 12, "cantidadIdeal": 12 },
+    { "id": 11, "sucursal_id": 2, "insumo_id": 27, "cantidadReal": 14, "cantidadIdeal": 16 },
+
+    { "id": 12, "sucursal_id": 3, "insumo_id": 4,  "cantidadReal": 7,  "cantidadIdeal": 10 },
+    { "id": 13, "sucursal_id": 3, "insumo_id": 7,  "cantidadReal": 6,  "cantidadIdeal": 10 },
+    { "id": 14, "sucursal_id": 3, "insumo_id": 12, "cantidadReal": 2,  "cantidadIdeal": 4 },
+    { "id": 15, "sucursal_id": 3, "insumo_id": 16, "cantidadReal": 10, "cantidadIdeal": 10 },
+    { "id": 16, "sucursal_id": 3, "insumo_id": 24, "cantidadReal": 9,  "cantidadIdeal": 12 }
+  ],
+
+  "Usuario": [
+    { "id": 1, "nombre": "Admin General",  "password": "hash-admin",  "telefono": "381-0000000", "activo": true, "rol": "ADMIN",            "sucursal_id": 1 },
+    { "id": 2, "nombre": "Operador Centro","password": "hash-centro", "telefono": "381-1111112", "activo": true, "rol": "SUCURSAL",         "sucursal_id": 1 },
+    { "id": 3, "nombre": "Operador Norte", "password": "hash-norte",  "telefono": "381-2222223", "activo": true, "rol": "SUCURSAL",         "sucursal_id": 2 },
+    { "id": 4, "nombre": "Despacho",       "password": "hash-desp",   "telefono": "381-4444444", "activo": true, "rol": "DESPACHO",         "sucursal_id": 1 },
+    { "id": 5, "nombre": "Encargado Prod", "password": "hash-prod",   "telefono": "381-5555555", "activo": true, "rol": "ENCARGADO_PEDIDO", "sucursal_id": 1 }
+  ],
+
+  "DisponibilidadStockSucursal": [
+    { "id": 1,  "sucursal_id": 1, "tipoStock_id": 1, "diaSemana": 4 },
+    { "id": 2,  "sucursal_id": 1, "tipoStock_id": 1, "diaSemana": 3 },
+    { "id": 3,  "sucursal_id": 1, "tipoStock_id": 1, "diaSemana": 5 },
+    { "id": 15,  "sucursal_id": 1, "tipoStock_id": 1, "diaSemana": 6 },
+    { "id": 16,  "sucursal_id": 1, "tipoStock_id": 1, "diaSemana": 0 },
+    { "id": 17,  "sucursal_id": 1, "tipoStock_id": 1, "diaSemana": 2 },
+    { "id": 18,  "sucursal_id": 1, "tipoStock_id": 1, "diaSemana": 1 },
+
+    { "id": 4,  "sucursal_id": 2, "tipoStock_id": 1, "diaSemana": 2 },
+    { "id": 5,  "sucursal_id": 2, "tipoStock_id": 3, "diaSemana": 4 },
+
+    { "id": 6,  "sucursal_id": 3, "tipoStock_id": 2, "diaSemana": 1 },
+    { "id": 7,  "sucursal_id": 3, "tipoStock_id": 3, "diaSemana": 6 },
+
+    { "id": 8,  "sucursal_id": 4, "tipoStock_id": 4, "diaSemana": 1 },
+    { "id": 9,  "sucursal_id": 4, "tipoStock_id": 4, "diaSemana": 2 },
+    { "id": 10,  "sucursal_id": 4, "tipoStock_id": 4, "diaSemana": 3 },
+    { "id": 11,  "sucursal_id": 4, "tipoStock_id": 4, "diaSemana": 4 },
+    { "id": 12,  "sucursal_id": 4, "tipoStock_id": 4, "diaSemana": 5 },
+    { "id": 13,  "sucursal_id": 4, "tipoStock_id": 4, "diaSemana": 6 },
+    { "id": 14,  "sucursal_id": 4, "tipoStock_id": 4, "diaSemana": 0 }
+
+  ],
+
+  "Pedido": [
+    { "id": 1, "fecha": "2025-08-21T22:30:00.000Z", "estado": "BORRADOR",         "tipoStock_id": 1, "sucursal_id": 1 },
+    { "id": 2, "fecha": "2025-08-21T22:30:00.000Z", "estado": "APROBADO",         "tipoStock_id": 1, "sucursal_id": 2 },
+    { "id": 3, "fecha": "2025-08-21T13:00:00.000Z", "estado": "ENVIADO_A_PROD",   "tipoStock_id": 4, "sucursal_id": 1 },
+    { "id": 4, "fecha": "2025-08-17T22:00:00.000Z", "estado": "APROBADO",         "tipoStock_id": 2, "sucursal_id": 1 },
+    { "id": 5, "fecha": "2025-08-17T22:00:00.000Z", "estado": "APROBADO",         "tipoStock_id": 5, "sucursal_id": 1 },
+    { "id": 6, "fecha": "2025-08-17T22:00:00.000Z", "estado": "APROBADO",         "tipoStock_id": 6, "sucursal_id": 1 }
+  ],
+
+  "DetallePedido": [
+    { "id": 1, "pedido_id": 1, "insumo_id": 1,  "cantidad": 60 },
+    { "id": 2, "pedido_id": 1, "insumo_id": 2,  "cantidad": 40 },
+    { "id": 3, "pedido_id": 2, "insumo_id": 9,  "cantidad": 30 },
+    { "id": 4, "pedido_id": 2, "insumo_id": 3,  "cantidad": 12 },
+    { "id": 5, "pedido_id": 3, "insumo_id": 4,  "cantidad": 50 },
+    { "id": 6, "pedido_id": 3, "insumo_id": 5,  "cantidad": 20 },
+    { "id": 7, "pedido_id": 4, "insumo_id": 7,  "cantidad": 10 },
+    { "id": 8, "pedido_id": 4, "insumo_id": 8,  "cantidad": 100 }
+  ]
+}

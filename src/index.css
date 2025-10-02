@@ -1,0 +1,133 @@
+/* Fuentes */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
+
+/* Tailwind v4 */
+@import "tailwindcss";
+
+/* Tokens CSS */
+:root{
+  --ink:#2C2C2C; --graphite:#4F4F4F; --paper:#F5F5F5; --white:#FFFFFF;
+  --frame:#E0E0E0; --beige:#DCC7AA; --beige-hover:#CBB393;
+}
+
+/* Base */
+html,body,#root{height:100%;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif}
+
+/* Componentes */
+@layer components{
+  .card{@apply bg-white border rounded-xl shadow p-4;border-color:var(--frame)}
+  .btn{@apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition}
+  .btn-primary{background:var(--beige);color:var(--ink)}
+  .btn-primary:hover{background:var(--beige-hover)}
+  .btn-outline{@apply border bg-transparent; border-color:var(--graphite); color:var(--ink)}
+  .btn-outline:hover{background:#f5f5f5}
+  .input{@apply w-full rounded-lg border px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2; border-color:var(--frame)}
+  .input:focus{--tw-ring-color:var(--beige)}
+}
+
+/* ===== Navbar Admin ===== */
+@layer components {
+  .navbar { @apply bg-white border-b; border-color: var(--frame); }
+  .navbar-inner { @apply h-14 px-4 sm:px-6 flex items-center justify-between; }
+  .brand { @apply flex items-center gap-2; }
+  .brand-dot { width: 10px; height: 10px; border-radius: 9999px; background: var(--beige); }
+  .brand-title { @apply text-sm font-medium; }
+
+  .nav-toggle { @apply sm:hidden inline-flex items-center justify-center rounded-lg p-2 border; border-color: var(--frame); }
+  .nav-menu { @apply sm:flex hidden items-center gap-1; }
+  .nav-menu.open { @apply block; }
+  .nav-item { @apply rounded-lg px-3 py-2 text-sm transition; color: var(--graphite); }
+  .nav-item:hover { background: #f7f7f7; }
+  .nav-item--active { box-shadow: inset 3px 0 0 0 var(--beige); background: #f9f9f9; }
+
+  /* Menú móvil */
+  .nav-mobile { @apply sm:hidden border-t; border-color: var(--frame); }
+  .nav-mobile-list { @apply p-2 grid gap-1; }
+}
+
+/* ===== Sidebar con acordeones ===== */
+@layer components {
+  /* Layout de 2 columnas en lg, en mobile usa drawer */
+  .admin-shell { @apply min-h-screen; background: var(--paper); color: var(--ink); }
+  .admin-grid { @apply lg:grid; grid-template-columns: 260px 1fr; }
+
+  /* Topbar simple con botón hamburguesa */
+  .topbar { @apply h-14 bg-white border-b flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40;
+    border-color: var(--frame);
+  }
+
+  /* Sidebar (desktop) */
+  .sidebar { @apply hidden lg:flex flex-col h-[calc(100vh-56px)] sticky top-14; background: var(--ink); color: white; }
+  .side-scroll { @apply overflow-y-auto p-3; }
+
+  /* Drawer (mobile) */
+  .drawer-overlay { @apply fixed inset-0 bg-black/40 z-40 lg:hidden; }
+  .drawer-panel { @apply fixed inset-y-0 left-0 w-64 z-50 p-3; background: var(--ink); color: white; }
+
+  /* Acordeones */
+  .side-group { @apply mb-2; }
+  .side-toggle { @apply w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium select-none; }
+  .side-toggle:hover { background: rgba(255,255,255,0.08); }
+  .side-toggle-ind { @apply w-6 h-6 inline-flex items-center justify-center rounded-md; background: rgba(255,255,255,0.08); }
+  .side-list { @apply mt-1 grid gap-1; }
+
+  /* Links */
+  .side-link { @apply block px-3 py-2 rounded-lg text-sm transition; color: rgba(255,255,255,0.92); }
+  .side-link:hover { background: rgba(255,255,255,0.10); }
+  .side-link-active { background: rgba(255,255,255,0.12); box-shadow: inset 3px 0 0 0 var(--beige); }
+
+  /* Chips de sección opcionales */
+  .brand { @apply flex items-center gap-2; }
+  .brand-dot { width: 10px; height: 10px; border-radius: 9999px; background: var(--beige); }
+
+    /* Sidebar ancho normal */
+  .sidebar-wide { width: 260px; transition: width 0.2s; }
+  /* Sidebar colapsada */
+  .sidebar-collapsed { width: 60px; transition: width 0.2s; }
+
+  /* Cuando está colapsada, ocultamos textos */
+  .collapsed .side-toggle span:first-child,
+  .collapsed .side-link { display: none; }
+  .collapsed .side-toggle-ind { display: none; }
+
+  .acc-card { @apply rounded-lg border bg-white; border-color: var(--frame); }
+  .acc-head { @apply w-full flex items-center justify-between gap-3 p-3; }
+  .acc-title { @apply flex items-center gap-2 font-medium; }
+  .acc-icon { @apply inline-flex items-center justify-center rounded-md border w-7 h-7 text-sm; border-color: var(--frame); }
+  .acc-body { @apply border-t p-3; border-color: var(--frame); }
+  .chip { @apply inline-flex items-center gap-2 rounded-full px-3 py-1 border text-sm; border-color: var(--frame); color: var(--graphite); }
+/* Contenedor de acciones: wrap en mobile, fila en desktop */
+  .actions {
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+  }
+  @media (min-width: 640px) {
+    .actions { flex-wrap: nowrap; }
+  }
+
+  /* Botones: tamaño normal y compacto */
+  .btn-sm   { padding: 0.35rem 0.6rem; font-size: 0.875rem; border-radius: 0.5rem; }
+  .btn-wide { min-width: 9rem; }
+
+  /* En móviles, los botones pueden ocupar medio o todo el ancho según contexto */
+  .btn-fluid { flex: 1 1 100%; }
+  @media (min-width: 640px) {
+    .btn-fluid { flex: 0 0 auto; }
+  }
+
+  /* Filas responsivas con wrap */
+  .row-resp {
+    display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  }
+  @media (min-width: 640px) {
+    .row-resp { flex-wrap: nowrap; }
+  }
+
+  .menu-item {
+    @apply w-full text-left px-3 py-2 text-sm;
+    display: block;
+    border-bottom: 1px solid;
+    border-color: var(--frame);
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item:hover { background: #fafafa; }
+}
