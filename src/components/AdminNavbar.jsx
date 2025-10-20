@@ -20,7 +20,6 @@ export default function AdminNavbar() {
         <div className="brand">
           <span className="brand-dot" />
           <span className="text-sm" style={{ color: "var(--graphite)" }}>Administrador</span>
-          <span className="brand-title">Estrella Stock</span>
         </div>
 
         {/* Desktop */}

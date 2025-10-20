@@ -11,7 +11,10 @@ export default function RubroListSucursal({
 }) {
   if (!rubros?.length) {
     return (
-      <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--frame)", color: "var(--graphite)" }}>
+      <div
+        className="rounded-lg border p-3 text-sm"
+        style={{ borderColor: "var(--frame)", color: "var(--graphite)" }}
+      >
         No hay rubros con insumos para este tipo de stock.
       </div>
     );
@@ -22,10 +25,19 @@ export default function RubroListSucursal({
       {rubros.map((rubro) => {
         const insumosHab = insumosHabPorRubro.get(Number(rubro.id)) ?? [];
         return (
-          <div key={rubro.id} className="rounded-xl border" style={{ borderColor: "var(--frame)", backgroundColor: "#FFFFFF" }}>
-            <div className="px-3 sm:px-4 py-2 border-b" style={{ borderColor: "var(--frame)", background: "var(--surface, #fafafa)" }}>
-              <h4 className="font-medium text-sm sm:text-base">{rubro?.nombre ?? `Rubro #${rubro?.id}`}</h4>
-            </div>
+          <section
+            key={rubro.id}
+            className="rounded-xl border overflow-hidden"
+            style={{ borderColor: "var(--frame)", backgroundColor: "#FFFFFF" }}
+          >
+            <header
+              className="px-3 sm:px-4 py-2 border-b sticky top-0 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70"
+              style={{ borderColor: "var(--frame)", background: "var(--surface, #fafafa)" }}
+            >
+              <h4 className="font-medium text-sm sm:text-base truncate">
+                {rubro?.nombre ?? `Rubro #${rubro?.id}`}
+              </h4>
+            </header>
             <div className="p-2 sm:p-3">
               <InsumoListSucursal
                 insumos={insumosHab}
@@ -36,7 +48,7 @@ export default function RubroListSucursal({
                 currentTipoStockId={currentTipoStockId} // 👈 pasa el tipo actual
               />
             </div>
-          </div>
+          </section>
         );
       })}
     </div>

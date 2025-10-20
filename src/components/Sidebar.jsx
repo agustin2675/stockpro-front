@@ -6,7 +6,6 @@ const NAV_ITEMS = [
   { key: "usuarios", label: "Usuarios", to: "/admin/usuarios" },
   { key: "insumos", label: "Insumos", to: "/admin/insumos" },
   { key: "stock-sucursal", label: "Stock Sucursales", to: "/admin/stock-sucursal" },
-  { key: "stock-produccion", label: "Stock Producción", to: "/admin/stock-produccion" },
   { key: "historial", label: "Historial Sucursales", to: "/admin/historial" }
 ];
 

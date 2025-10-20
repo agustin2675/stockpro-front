@@ -49,3 +49,13 @@ export async function updatePedido(id, payload) {
   }
 }
 
+export const imprimirPedido = async (id) => {
+  try {
+    const fileURL = `${import.meta.env.VITE_API_URL}/pedidos/imprimir/${id}`
+
+    window.open(fileURL, '_blank');
+  } catch (error) {
+    console.error(`Error al imprimir Pedido ${id}:`, error);
+    throw error;
+  }
+};

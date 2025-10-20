@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import Modal from "../../components/Modal.jsx";
 import { createOrUpdateSucursalInsumo } from "../../services/sucursalInsumoService";
+import { getRubroById } from "../../services/rubroService";
 
 export default function ModalAgregarInsumo({
   open,
@@ -32,17 +33,23 @@ export default function ModalAgregarInsumo({
     return s;
   }, [existentes, sucursalId, tipoStockId]);
 
-  // lista filtrada
+    // lista filtrada (excluye los ya agregados)
   const candidatos = useMemo(() => {
     const list = Array.isArray(insumos) ? insumos : [];
     const qq = q.trim().toLowerCase();
-    const filtered = qq
-      ? list.filter((i) => (i?.nombre ?? "").toLowerCase().includes(qq))
-      : list;
+
+    // Filtramos por búsqueda y quitamos los ya habilitados
+    const filtered = list.filter((i) => {
+      const nombre = (i?.nombre ?? "").toLowerCase();
+      const coincide = !qq || nombre.includes(qq);
+      const noAgregado = !yaHabilitados.has(Number(i.id));
+      return coincide && noAgregado;
+    });
+
     return filtered
       .slice()
       .sort((a, b) => (a?.nombre ?? "").localeCompare(b?.nombre ?? ""));
-  }, [insumos, q]);
+  }, [insumos, q, yaHabilitados]);
 
   const handleGuardar = async () => {
     try {
@@ -76,23 +83,47 @@ export default function ModalAgregarInsumo({
 
       const row = await createOrUpdateSucursalInsumo(payload);
 
-      // enriquecer con insumo
-      const insumoObj = insumos.find(
-        (i) => Number(i.id) === Number(selectedInsumoId)
-      );
-      const enriched = {
-        ...row,
-        sucursal_id: row?.sucursal_id ?? payload.sucursal_id,
-        tipoStock_id: row?.tipoStock_id ?? payload.tipoStock_id,
-        insumo_id: row?.insumo_id ?? payload.insumo_id,
-        cantidadReal: row?.cantidadReal ?? cr,
-        cantidadIdeal: row?.cantidadIdeal ?? ci,
-        cantidadMinima: row?.cantidadMinima ?? cm,
-        insumo: row?.insumo ?? insumoObj,
-      };
+      const insumoObj =
+  (insumos || []).find(i => Number(i.id) === Number(selectedInsumoId)) || null;
 
-      onSaved?.(enriched);
-      onClose?.();
+// Detectar rubroId desde el insumo (venga como objeto o *_id)
+const rubroId =
+  Number(
+    insumoObj?.rubro?.id ??
+    insumoObj?.rubro_id ??
+    insumoObj?.rubroId
+  );
+
+// Si tenemos rubroId pero no viene el objeto rubro, lo pedimos al backend
+let rubroObj = insumoObj?.rubro ?? null;
+if (!rubroObj && Number.isFinite(rubroId)) {
+  try {
+    rubroObj = await getRubroById(rubroId);
+  } catch (_) {
+    // si falla, seguimos sin romper el guardado
+  }
+}
+
+const enriched = {
+  ...row,
+  sucursal_id: row?.sucursal_id ?? payload.sucursal_id,
+  tipoStock_id: row?.tipoStock_id ?? payload.tipoStock_id,
+  insumo_id: row?.insumo_id ?? payload.insumo_id,
+  cantidadReal: row?.cantidadReal ?? 0,
+  cantidadIdeal: row?.cantidadIdeal ?? ci,
+  cantidadMinima: row?.cantidadMinima ?? cm,
+  insumo: insumoObj
+    ? {
+        ...insumoObj,
+        // Normalizamos rubro para que RubroAccordion pueda nombrar bien:
+        rubro: rubroObj ? { id: Number(rubroObj.id), nombre: rubroObj.nombre } : undefined,
+        rubro_id: Number.isFinite(rubroId) ? rubroId : insumoObj?.rubro_id
+      }
+    : row?.insumo ?? null,
+};
+
+onSaved?.(enriched);
+onClose?.();
     } catch (e) {
       console.error(e);
       setError(
@@ -157,7 +188,6 @@ export default function ModalAgregarInsumo({
                   />
                   <div>
                     <p className="font-medium">{i.nombre}</p>
-                    <p className="text-xs opacity-60">ID: {i.id}</p>
                   </div>
                 </label>
                 {disabled && (
@@ -174,7 +204,7 @@ export default function ModalAgregarInsumo({
 
       {/* cantidades */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
+        {/* <div>
           <label className="block text-sm mb-1">Cantidad Real</label>
           <input
             type="number"
@@ -184,7 +214,7 @@ export default function ModalAgregarInsumo({
             value={cantidadReal}
             onChange={(e) => setCantidadReal(e.target.value)}
           />
-        </div>
+        </div>*/}
         <div>
           <label className="block text-sm mb-1">Cantidad Ideal</label>
           <input

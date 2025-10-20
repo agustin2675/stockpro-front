@@ -1,8 +1,7 @@
 export default function SucursalOptions({ value, onChange }) {
   const opts = [
     { key: "stocks", label: "Stocks disponibles" },
-    { key: "histStock", label: "Historial de Stock" },
-    { key: "histPedidos", label: "Historial de pedidos" }
+    { key: "histStock", label: "Historial" }
   ];
 
   return (

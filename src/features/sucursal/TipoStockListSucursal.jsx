@@ -1,13 +1,18 @@
 // src/features/sucursal/TipoStockListSucursal.jsx
 import { useEffect, useState, useMemo } from "react";
-import { AnimatePresence, motion } from "framer-motion"; // 👈 NEW
+import { AnimatePresence, motion } from "framer-motion";
 import { PedidoProvider } from "../../context/PedidoContext.jsx";
 import { usePedido } from "../../context/PedidoContext.jsx";
 import RubroListSucursal from "./RubroListSucursal.jsx";
 import ModalAviso from "../../components/ModalAviso.jsx";
 
 // Servicios
-import { getPedido, postPedido } from "../../services/pedidoService.js";
+import {
+  getPedido,
+  postPedido,
+  getPedidoById,   // 👈 NEW
+  updatePedido,    // 👈 NEW
+} from "../../services/pedidoService.js";
 
 const headerStyle = {
   backgroundColor: "var(--accent-weak, #EFE8DC)",
@@ -31,25 +36,40 @@ function Modal({ open, onClose, children, title = "Seleccionar insumos" }) {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4"
       style={{ background: "rgba(0,0,0,0.4)" }}
       role="dialog"
       aria-modal="true"
+      aria-label={title}
     >
-      <div className="w-full max-w-2xl rounded-xl bg-white shadow-lg overflow-hidden">
-        <div className="px-4 py-3 border-b" style={{ borderColor: "var(--frame)" }}>
-          <h3 className="font-medium">{title}</h3>
+      {/* Centrado, auto-alto, con margen lateral en mobile */}
+      <div
+        className="w-full max-w-[42rem] mx-3 sm:mx-0 bg-white rounded-2xl shadow-xl border overflow-hidden"
+        style={{ borderColor: "var(--frame)" }}
+      >
+        {/* Header sticky */}
+        <div className="px-3 sm:px-4 py-3 border-b sticky top-0 bg-white z-10" style={{ borderColor: "var(--frame)" }}>
+          <h3 className="font-semibold text-base sm:text-lg truncate">{title}</h3>
         </div>
-        <div className="p-4 max-h-[70vh] overflow-auto">{children}</div>
-        <div className="px-4 py-3 border-t flex justify-end" style={{ borderColor: "var(--frame)" }}>
-          <button className="btn btn-outline btn-sm" onClick={onClose}>Cerrar</button>
+
+        {/* Contenido con scroll vertical máximo, sin overflow horizontal */}
+        <div className="px-3 sm:px-4 py-3 max-h-[70vh] overflow-y-auto overflow-x-hidden">
+          {children}
+        </div>
+
+        {/* Footer compacto y responsive */}
+        <div className="px-3 sm:px-4 py-3 border-t flex flex-col sm:flex-row gap-2 sm:justify-end" style={{ borderColor: "var(--frame)" }}>
+          <button className="btn btn-outline btn-sm w-full sm:w-auto" onClick={onClose}>
+            Cerrar
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Contenido original (stocks disponibles) ---------- */
+
+/* ---------- Contenido principal ---------- */
 function TipoStockContent({
   sucursalId,
   tiposStock = [],
@@ -59,10 +79,24 @@ function TipoStockContent({
   sucursalInsumo = [],
   unidades = [],
   onPedidoEnviado,
+  // 👇 NEW props para edición
+  isEditMode = false,
+  pedidoLoaded = null,         // objeto pedido cargado (getPedidoById)
 }) {
-  const { buildPayload } = usePedido();
+  const { buildPayload, hydrateFromPedido } = usePedido(); // 👈 hydrateFromPedido opcional
 
-  // 👇 NEW: estados para animaciones de envío
+  // Cuando estamos en modo edición e ingresan datos del pedido, hidratamos el contexto si el método existe
+  useEffect(() => {
+    if (isEditMode && pedidoLoaded && typeof hydrateFromPedido === "function") {
+      try {
+        hydrateFromPedido(pedidoLoaded);
+      } catch (e) {
+        console.warn("No se pudo hidratar el contexto con el pedido:", e);
+      }
+    }
+  }, [isEditMode, pedidoLoaded, hydrateFromPedido]);
+
+  // Animaciones de envío
   const [isSending, setIsSending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -79,7 +113,7 @@ function TipoStockContent({
   }, [insumos]);
 
   const bloques = useMemo(() => {
-    return tiposIds.map((tipoId) => {
+    return (tiposIds || []).map((tipoId) => {
       const tipo = tipoPorId.get(Number(tipoId));
       const siDelTipo = (sucursalInsumo || []).filter(
         (si) =>
@@ -118,7 +152,7 @@ function TipoStockContent({
   }, [tiposIds, tipoPorId, sucursalInsumo, sucursalId, rubros, insumoPorId]);
 
   // ---------- EXTRAS ----------
-  const habilitadosSet = useMemo(() => new Set(tiposIds.map(Number)), [tiposIds]);
+  const habilitadosSet = useMemo(() => new Set((tiposIds || []).map(Number)), [tiposIds]);
 
   const insumoIdsEnTiposHabilitados = useMemo(() => {
     const ids = new Set();
@@ -209,48 +243,48 @@ function TipoStockContent({
   const extrasCuenta = extrasInsumos.length > 0;
   const todosGuardados = normalesOk && (!extrasCuenta || isLocked("extras"));
 
-  const [warn, setWarn] = useState("");
-  const showWarn = (msg) => {
-    setWarn(msg);
-    window.clearTimeout(showWarn._t);
-    showWarn._t = window.setTimeout(() => setWarn(""), 3000);
-  };
-
   const [aviso, setAviso] = useState({ open: false, title: "", message: "", type: "info" });
   const abrirAviso  = (title, message, type = "info") => setAviso({ open: true, title, message, type });
   const cerrarAviso = () => setAviso((a) => ({ ...a, open: false }));
+  const EXTRA_ID = import.meta.env.VITE_EXTRA_ID;
 
-  // 👇 NEW: envío con animación suave
+
+  // Envío / Actualización
   const handleEnviar = async () => {
-    if (!todosGuardados) {
+    if (!todosGuardados && !isEditMode) {
+      // En edición permitimos guardar aunque no estén “bloqueados” todos, depende de tu flujo.
       abrirAviso("Falta guardar", "Todos los tipos de stock deben estar guardados antes de enviar.", "warning");
       return;
     }
     try {
-      setIsSending(true);                        // muestra overlay
-      await new Promise(r => setTimeout(r, 250)); // micro delay para que se perciba
-
+      setIsSending(true);
+      await new Promise(r => setTimeout(r, 200));
       const payload = buildPayload();
-      await postPedido(payload);                 // backend ok
 
-      setShowSuccess(true);                      // banner éxito
+      if (isEditMode && pedidoLoaded?.id) {
+        await updatePedido(pedidoLoaded.id, payload); // 👈 UPDATE
+      } else {
+        await postPedido(payload);                    // 👈 CREATE
+      }
+
+      setShowSuccess(true);
       await new Promise(r => setTimeout(r, 900));
       setShowSuccess(false);
 
-      abrirAviso("Éxito", "El pedido se envió correctamente.", "info");
+      abrirAviso("Éxito", isEditMode ? "Pedido actualizado correctamente." : "El pedido se envió correctamente.", "info");
       if (typeof onPedidoEnviado === "function") onPedidoEnviado();
     } catch (err) {
-      console.error("Error al enviar pedido:", err);
-      abrirAviso("Error", "No se pudo enviar el pedido.", "error");
+      console.error("Error al enviar/actualizar pedido:", err);
+      abrirAviso("Error", isEditMode ? "No se pudo actualizar el pedido." : "No se pudo enviar el pedido.", "error");
     } finally {
-      setIsSending(false);                       // retira overlay
+      setIsSending(false);
     }
   };
 
-  if (!tiposIds.length && !extrasCuenta) {
+  if (!tiposIds?.length && !extrasCuenta) {
     return (
       <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--frame)", color: "var(--graphite)" }}>
-        No hay tipos habilitados para hoy.
+        No hay tipos habilitados para esta fecha.
       </div>
     );
   }
@@ -269,12 +303,12 @@ function TipoStockContent({
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="rounded-xl bg-white px-5 py-4 shadow-xl text-sm flex items-center gap-3"
+              className="rounded-xl bg-white px-5 py-4 shadow-xl text-sm sm:text-base flex items-center gap-3"
               initial={{ scale: 0.98, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.98, opacity: 0 }}
             >
-              <span className="animate-pulse">Enviando…</span>
+              <span className="animate-pulse">{isEditMode ? "Guardando cambios…" : "Enviando…"}</span>
             </motion.div>
           </motion.div>
         )}
@@ -291,78 +325,82 @@ function TipoStockContent({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -12, opacity: 0 }}
           >
-            ✅ Pedido enviado
+            {isEditMode ? "✅ Cambios guardados" : "✅ Pedido enviado"}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Tipos NORMALES */}
-      {bloques.map(({ tipoId, tipoNombre, rubrosList, insumosPorRubro }) => {
-        const locked = isLocked(tipoId);
-        return (
-          <div
-            key={tipoId}
-            className="rounded-2xl border shadow-sm overflow-hidden transition-colors"
-            style={{ borderColor: "var(--frame)", backgroundColor: "#FFFFFF" }}
-          >
-            <div
-              className="px-4 py-3 border-b flex items-center justify-between transition-colors"
-              style={{
-                backgroundColor: locked ? VERDE_OSCURO : headerStyle.backgroundColor,
-                color: locked ? TEXTO_SOBRE_VERDE : headerStyle.color,
-                borderBottomColor: "var(--frame)",
-                borderLeft: locked ? `6px solid ${VERDE_OSCURO}` : "6px solid var(--accent, #D9C4A6)",
-              }}
+      <div className="grid gap-6 sm:gap-7">
+        {bloques.map(({ tipoId, tipoNombre, rubrosList, insumosPorRubro }) => {
+          const locked = isLocked(tipoId);
+          return (
+            <section
+              key={tipoId}
+              className="rounded-2xl border shadow-sm overflow-hidden transition-colors"
+              style={{ borderColor: "var(--frame)", backgroundColor: "#FFFFFF" }}
             >
-              <h3 className="font-medium text-base sm:text-lg">{tipoNombre}</h3>
-              <span
-                className="hidden sm:inline-block text-xs px-2 py-1 rounded-full"
+              <header
+                className="px-3 sm:px-4 py-3 border-b flex flex-wrap gap-2 items-center justify-between transition-colors"
                 style={{
-                  background: locked ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.04)",
-                  color: locked ? TEXTO_SOBRE_VERDE : "inherit",
+                  backgroundColor: locked ? VERDE_OSCURO : headerStyle.backgroundColor,
+                  color: locked ? TEXTO_SOBRE_VERDE : headerStyle.color,
+                  borderBottomColor: "var(--frame)",
+                  borderLeft: locked ? `6px solid ${VERDE_OSCURO}` : "6px solid var(--accent, #D9C4A6)",
                 }}
               >
-                Disponible hoy
-              </span>
-            </div>
+                <h3 className="font-medium text-base sm:text-lg">
+                  {tipoNombre} {isEditMode && <span className="opacity-80 text-xs">(edición)</span>}
+                </h3>
+                <span
+                  className="hidden sm:inline-block text-xs px-2 py-1 rounded-full"
+                  style={{
+                    background: locked ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.04)",
+                    color: locked ? TEXTO_SOBRE_VERDE : "inherit",
+                  }}
+                >
+                  Disponible
+                </span>
+              </header>
 
-            <div className="p-3 sm:p-4 bg-white">
-              <RubroListSucursal
-                rubros={rubrosList}
-                insumosHabPorRubro={insumosPorRubro}
-                sucursalId={sucursalId}
-                sucursalInsumo={sucursalInsumo}
-                unidades={unidades}
-                disabled={locked}
-                currentTipoStockId={Number(tipoId)}
-              />
-            </div>
+              <div className="p-2 sm:p-4 bg-white">
+                <RubroListSucursal
+                  rubros={rubrosList}
+                  insumosHabPorRubro={insumosPorRubro}
+                  sucursalId={sucursalId}
+                  sucursalInsumo={sucursalInsumo}
+                  unidades={unidades}
+                  disabled={locked}
+                  currentTipoStockId={Number(tipoId)}
+                />
+              </div>
 
-            <div className="px-4 py-3 border-t flex justify-end gap-2" style={{ borderColor: "var(--frame)" }}>
-              {!locked ? (
-                <button className="btn btn-primary btn-sm" onClick={() => toggleLock(tipoId, true)}>
-                  Guardar
-                </button>
-              ) : (
-                <button className="btn btn-outline btn-sm" onClick={() => toggleLock(tipoId, false)}>
-                  Cancelar
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
+              <div className="px-3 sm:px-4 py-3 border-t flex flex-col sm:flex-row gap-2 sm:justify-end" style={{ borderColor: "var(--frame)" }}>
+                {!locked ? (
+                  <button className="btn btn-primary btn-sm w-full sm:w-auto" onClick={() => toggleLock(tipoId, true)}>
+                    Guardar
+                  </button>
+                ) : (
+                  <button className="btn btn-outline btn-sm w-full sm:w-auto" onClick={() => toggleLock(tipoId, false)}>
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </div>
 
       {/* ----- EXTRAS ----- */}
-      <div
+      <section
         className="rounded-2xl border shadow-sm overflow-hidden transition-colors"
         style={{ borderColor: "var(--frame)", backgroundColor: "#FFFFFF" }}
       >
         {(() => {
           const locked = isLocked("extras");
           return (
-            <div
-              className="px-4 py-3 border-b flex items-center justify-between transition-colors"
+            <header
+              className="px-3 sm:px-4 py-3 border-b flex flex-wrap gap-2 items-center justify-between transition-colors"
               style={{
                 backgroundColor: locked ? VERDE_OSCURO : headerStyle.backgroundColor,
                 color: locked ? TEXTO_SOBRE_VERDE : headerStyle.color,
@@ -372,20 +410,20 @@ function TipoStockContent({
             >
               <h3 className="font-medium text-base sm:text-lg">Extras</h3>
               <div className="flex items-center gap-2">
-                {!locked && (
-                  <button className="btn btn-outline btn-sm" onClick={() => setExtrasModalOpen(true)}>
+                {!locked && !isEditMode && (
+                  <button className="btn btn-outline btn-sm w-full sm:w-auto" onClick={() => setExtrasModalOpen(true)}>
                     Agregar insumos
                   </button>
                 )}
               </div>
-            </div>
+            </header>
           );
         })()}
 
-        <div className="p-3 sm:p-4 bg-white">
+        <div className="p-2 sm:p-4 bg-white">
           {extrasInsumos.length === 0 ? (
             <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--frame)", color: "var(--graphite)" }}>
-              No hay insumos en Extras. Usá “Agregar insumos”.
+              No hay insumos en Extras. {isEditMode ? " " : "Usá “Agregar insumos”."}
             </div>
           ) : (
             <RubroListSucursal
@@ -395,35 +433,41 @@ function TipoStockContent({
               sucursalInsumo={sucursalInsumo}
               unidades={unidades}
               disabled={isLocked("extras")}
-              // ⚠️ Si tu “Extras” tiene un id real en BD, pasalo aquí:
-              currentTipoStockId={6}
+              currentTipoStockId={EXTRA_ID /* si “Extras” tiene ID real, actualizá esto */}
             />
           )}
         </div>
 
-        <div className="px-4 py-3 border-t flex justify-end gap-2" style={{ borderColor: "var(--frame)" }}>
+        <div className="px-3 sm:px-4 py-3 border-t flex flex-col sm:flex-row gap-2 sm:justify-end" style={{ borderColor: "var(--frame)" }}>
           {!isLocked("extras") ? (
             <>
-              {extrasInsumos.length > 0 && (
-                <button className="btn btn-primary btn-sm" onClick={() => toggleLock("extras", true)}>
+              {extrasInsumos.length > 0 && !isEditMode && (
+                <button className="btn btn-primary btn-sm w-full sm:w-auto" onClick={() => toggleLock("extras", true)}>
                   Guardar
                 </button>
               )}
             </>
           ) : (
-            <button className="btn btn-outline btn-sm" onClick={() => toggleLock("extras", false)}>
+            <button className="btn btn-outline btn-sm w-full sm:w-auto" onClick={() => toggleLock("extras", false)}>
               Cancelar
             </button>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* Aviso + Enviar */}
-      <div className="space-y-2">
-        <div className="flex justify-end">
-          <button className={`btn btn-primary`} onClick={handleEnviar} title={"Enviar"}>
-            Enviar
-          </button>
+      {/* Enviar / Actualizar */}
+      <div className="sticky bottom-3 md:static">
+        <div className="bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 md:bg-transparent rounded-xl md:rounded-none shadow-md md:shadow-none p-2 md:p-0 border md:border-0" style={{ borderColor: "var(--frame)" }}>
+          <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+            <button
+              className="btn btn-primary w-full sm:w-auto"
+              onClick={handleEnviar}
+              title={isEditMode ? "Guardar cambios" : "Enviar"}
+              aria-label={isEditMode ? "Guardar cambios" : "Enviar pedido"}
+            >
+              {isEditMode ? "Guardar cambios" : "Enviar"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -442,58 +486,79 @@ function TipoStockContent({
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="text-sm" style={{ color: "var(--graphite)" }}>
+            <div className="text-xs sm:text-sm" style={{ color: "var(--graphite)" }}>
               Mostrando insumos de la sucursal cuyo tipo no está habilitado hoy.
             </div>
-            <div className="rounded-lg border" style={{ borderColor: "var(--frame)" }}>
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left w-10">
-                      <span className="sr-only">Sel</span>
-                    </th>
-                    <th className="px-3 py-2 text-left">Nombre</th>
-                    <th className="px-3 py-2 text-left">Rubro</th>
-                    <th className="px-3 py-2 text-left">Unidad</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {candidatosExtras.map((i, idx) => {
-                    const rubro = rubros.find((r) => Number(r.id) === Number(i.rubro_id));
-                    const unidad =
-                      i?.unidad?.nombre ??
-                      unidades.find(
-                        (u) =>
-                          Number(u.id) ===
-                          Number(i.unidadDeMedida_id || i.unidadMedida_id || i.unidad_id || i.unidadId)
-                      )?.nombre ?? "—";
-                    const checked = extrasSeleccion.has(Number(i.id));
-                    return (
-                      <tr
-                        key={i.id}
-                        style={{ borderBottom: idx === candidatosExtras.length - 1 ? "none" : "1px solid rgba(229,231,235,0.5)" }}
-                      >
-                        <td className="px-3 py-2">
-                          <input type="checkbox" checked={checked} onChange={() => toggleSeleccion(Number(i.id))} />
-                        </td>
-                        <td className="px-3 py-2">{i?.nombre}</td>
-                        <td className="px-3 py-2">{rubro?.nombre ?? "—"}</td>
-                        <td className="px-3 py-2">{unidad}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+
+            {/* 👇 Contenedor sin scroll horizontal en mobile */}
+            <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--frame)" }}>
+              <div className="max-h-[50vh] overflow-y-auto overflow-x-hidden">
+                <table className="min-w-full table-auto text-xs">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-2 py-2 text-left w-8">
+                        <span className="sr-only">Sel</span>
+                      </th>
+                      <th className="px-2 py-2 text-left">Nombre</th>
+                      <th className="px-2 py-2 text-left">Rubro</th>
+                      <th className="px-2 py-2 text-left">Unidad</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {candidatosExtras.map((i, idx) => {
+                      const rubro = rubros.find((r) => Number(r.id) === Number(i.rubro_id));
+                      const unidad =
+                        i?.unidad?.nombre ??
+                        unidades.find(
+                          (u) =>
+                            Number(u.id) ===
+                            Number(i.unidadDeMedida_id || i.unidadMedida_id || i.unidad_id || i.unidadId)
+                        )?.nombre ?? "—";
+                      const checked = extrasSeleccion.has(Number(i.id));
+                      return (
+                        <tr
+                          key={i.id}
+                          className="align-top hover:bg-gray-50/60"
+                          style={{ borderBottom: idx === candidatosExtras.length - 1 ? "none" : "1px solid rgba(229,231,235,0.5)" }}
+                        >
+                          <td className="px-2 py-2">
+                            <input
+                              aria-label={`Seleccionar ${i?.nombre}`}
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleSeleccion(Number(i.id))}
+                              className="h-4 w-4"
+                            />
+                          </td>
+
+                          {/* 👇 Evitar overflow: permitir corte de palabra y múltiples líneas */}
+                          <td className="px-2 py-2 break-words">
+                            <div className="max-w-[12rem] sm:max-w-none leading-snug">{i?.nombre}</div>
+                          </td>
+
+                          <td className="px-2 py-2 break-words">
+                            <div className="max-w-[10rem] sm:max-w-none leading-snug">{rubro?.nombre ?? "—"}</div>
+                          </td>
+
+                          <td className="px-2 py-2 break-words">
+                            <div className="max-w-[8rem] sm:max-w-none leading-snug">{unidad}</div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
               <button
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm w-full sm:w-auto"
                 onClick={agregarSeleccionadosAExtras}
                 disabled={extrasSeleccion.size === 0}
                 title={extrasSeleccion.size ? "Agregar seleccionados" : "Seleccioná al menos uno"}
               >
-                Agregar seleccionados
+                Agregar seleccionados{extrasSeleccion.size ? ` (${extrasSeleccion.size})` : ""}
               </button>
             </div>
           </div>
@@ -511,9 +576,16 @@ function TipoStockContent({
   );
 }
 
-/* ---------- Wrapper con chequeo HOY/AYER y avisos ---------- */
+/* ---------- Wrapper con chequeo HOY/AYER + Modo edición ---------- */
 export default function TipoStockListSucursal(props) {
-  const { sucursalId, tiposIds: tiposIdsHoyProp = [], getTiposIdsByDate } = props;
+  const {
+    sucursalId,
+    tiposIds: tiposIdsHoyProp = [],
+    getTiposIdsByDate,
+    pedidoId, // 👈 NEW (opcional). Si viene, activamos modo edición
+  } = props;
+
+  const isEditMode = Boolean(pedidoId);
 
   const [cargando, setCargando] = useState(true);
   const [pedidoHoy, setPedidoHoy] = useState(false);
@@ -521,11 +593,7 @@ export default function TipoStockListSucursal(props) {
 
   const [targetDate, setTargetDate] = useState(() => new Date());
   const [tiposIdsTarget, setTiposIdsTarget] = useState(tiposIdsHoyProp);
-
-  const sameLocalDay = (a, b) =>
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
+  const [pedidoLoaded, setPedidoLoaded] = useState(null); // 👈 NEW
 
   const checkPedidoEnFecha = async (date) => {
     const arr = await getPedido();
@@ -550,102 +618,166 @@ export default function TipoStockListSucursal(props) {
   };
 
   const cargarHoy = () => {
+    if (isEditMode) return; // en edición no cambiamos fecha
     setTargetDate(new Date());
     setTiposIdsTarget(Array.isArray(tiposIdsHoyProp) ? tiposIdsHoyProp : []);
   };
 
   const cargarAyer = async () => {
+    if (isEditMode) return; // en edición no cambiamos fecha
     const hoy = new Date();
     const ayer = new Date(hoy);
     ayer.setDate(hoy.getDate() - 1);
-    if (pedidoAyer) return; // bloquea si ya existe pedido ayer
+    if (pedidoAyer) return;
     const ids = typeof getTiposIdsByDate === "function" ? await getTiposIdsByDate(ayer) : [];
     setTargetDate(ayer);
     setTiposIdsTarget(Array.isArray(ids) ? ids : []);
   };
 
+  // Carga inicial
   useEffect(() => {
     (async () => {
       try {
         setCargando(true);
-        await refreshEstadoPedidos();
-        setTargetDate(new Date());
-        setTiposIdsTarget(Array.isArray(tiposIdsHoyProp) ? tiposIdsHoyProp : []);
+
+        if (isEditMode) {
+          // 1) Traemos el pedido a editar
+          const p = await getPedidoById(pedidoId);
+          if (!p) throw new Error("No se encontró el pedido.");
+          setPedidoLoaded(p);
+
+          // 2) Fijamos fecha del pedido
+          const fecha = new Date(p.fecha);
+          setTargetDate(fecha);
+
+          // 3) Tipos habilitados en esa fecha
+          if (typeof getTiposIdsByDate === "function") {
+            const ids = await getTiposIdsByDate(fecha);
+            setTiposIdsTarget(Array.isArray(ids) ? ids : []);
+          } else {
+            // fallback: dejamos los de hoy si no hay función para esa fecha
+            setTiposIdsTarget(Array.isArray(tiposIdsHoyProp) ? tiposIdsHoyProp : []);
+          }
+
+          // En edición el aviso de “pedido ya realizado” no aplica, pero igual refrescamos estado para consistencia
+          await refreshEstadoPedidos();
+        } else {
+          // Flujo normal (crear)
+          await refreshEstadoPedidos();
+          setTargetDate(new Date());
+          setTiposIdsTarget(Array.isArray(tiposIdsHoyProp) ? tiposIdsHoyProp : []);
+        }
       } finally {
         setCargando(false);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sucursalId]);
+  }, [sucursalId, pedidoId]);
 
   if (cargando) {
     return (
       <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--frame)" }}>
-        Cargando disponibilidad…
+        {isEditMode ? "Cargando pedido para editar…" : "Cargando disponibilidad…"}
       </div>
     );
   }
 
   const esHoy = sameLocalDay(targetDate, new Date());
-  const tiposIdsParaRender = esHoy ? tiposIdsHoyProp : tiposIdsTarget;
+  const tiposIdsParaRender = isEditMode ? tiposIdsTarget : (esHoy ? tiposIdsHoyProp : tiposIdsTarget);
 
-  // 🔔 Aviso cuando estás en HOY y ya existe pedido en HOY
-  if (esHoy && pedidoHoy) {
-    return (
-      <div className="space-y-3">
-        <div
-          className="rounded-xl border p-4 text-center text-sm sm:text-base"
-          style={{ borderColor: "var(--frame)", background: "#FFF" }}
-        >
-          <strong>El stock del día ya ha sido realizado</strong>
-        </div>
-
-        {/* Ofrecer ir a AYER solo si ayer NO tiene pedido */}
-        {!pedidoAyer && (
+  /* 🕒 NUEVO: bloqueo horario para "Hoy"
+     - No disponible entre 00:00 y 12:59.
+     - Muestra aviso y permite ir a "Día anterior" si corresponde.
+  */
+  if (!isEditMode && esHoy) {
+    const ahora = new Date();
+    const hora = ahora.getHours(); // hora local del navegador
+    const bloqueoHorario = hora < 13; // 0–12 => bloqueado
+    if (bloqueoHorario) {
+      return (
+        <div className="space-y-3">
           <div
-            className="rounded-xl border p-3 flex items-center justify-between"
+            className="rounded-xl border p-4 text-center text-sm sm:text-base"
             style={{ borderColor: "var(--frame)", background: "#FFF" }}
           >
-            <span className="text-sm">
-              ¿Querés cargar el <strong>día anterior</strong> (
-              {new Date(Date.now() - 86400000).toLocaleDateString()})?
-            </span>
-            <button className="btn btn-primary btn-sm" onClick={cargarAyer}>
-              Cargar día anterior
+            <strong>⏰ El stock de Hoy estará disponible a partir de las 13:00.</strong>
+            <div className="mt-1 text-xs sm:text-sm" style={{ color: "var(--graphite)" }}>
+              Podés volver más tarde o cargar el <b>día anterior</b>.
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-center">
+            <button
+              className="btn btn-primary btn-sm w-full sm:w-auto"
+              onClick={cargarAyer}
+              disabled={pedidoAyer}
+              title={pedidoAyer ? "Ya existe un pedido en la fecha de ayer" : "Cargar tipos del día anterior"}
+            >
+              Día anterior
             </button>
           </div>
-        )}
-      </div>
-    );
+        </div>
+      );
+    }
   }
 
-  // 🔔 Aviso cuando estás parado en AYER y ya existe pedido en AYER (después de enviarlo)
-  if (!esHoy && pedidoAyer) {
-    return (
-      <div className="space-y-3">
-        <div
-          className="rounded-xl border p-4 text-center text-sm sm:text-base"
-          style={{ borderColor: "var(--frame)", background: "#FFF" }}
-        >
-          <strong>El stock de esta fecha ya ha sido realizado</strong>
-        </div>
+  // En edición NO mostramos los avisos de “ya realizado” ni el CTA para ir a ayer
+  if (!isEditMode) {
+    if (esHoy && pedidoHoy) {
+      return (
+        <div className="space-y-3">
+          <div
+            className="rounded-xl border p-4 text-center text-sm sm:text-base"
+            style={{ borderColor: "var(--frame)", background: "#FFF" }}
+          >
+            <strong>El stock del día ya ha sido realizado</strong>
+          </div>
 
-        <div className="flex gap-8 items-center">
-          <button className="btn btn-outline btn-sm" onClick={cargarHoy}>
-            Volver a hoy
-          </button>
-
-          <button className="btn btn-sm" disabled title="Ya existe un pedido en esta fecha">
-            Día anterior
-          </button>
+          {!pedidoAyer && (
+            <div
+              className="rounded-xl border p-3 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between"
+              style={{ borderColor: "var(--frame)", background: "#FFF" }}
+            >
+              <span className="text-sm">
+                ¿Querés cargar el <strong>día anterior</strong> (
+                {new Date(Date.now() - 86400000).toLocaleDateString()})?
+              </span>
+              <button className="btn btn-primary btn-sm w-full sm:w-auto" onClick={cargarAyer}>
+                Cargar día anterior
+              </button>
+            </div>
+          )}
         </div>
-      </div>
-    );
+      );
+    }
+
+    if (!esHoy && pedidoAyer) {
+      return (
+        <div className="space-y-3">
+          <div
+            className="rounded-xl border p-4 text-center text-sm sm:text-base"
+            style={{ borderColor: "var(--frame)", background: "#FFF" }}
+          >
+            <strong>El stock de esta fecha ya ha sido realizado</strong>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-8 sm:items-center">
+            <button className="btn btn-outline btn-sm w-full sm:w-auto" onClick={cargarHoy}>
+              Volver a hoy
+            </button>
+
+            <button className="btn btn-sm w-full sm:w-auto" disabled title="Ya existe un pedido en esta fecha">
+              Día anterior
+            </button>
+          </div>
+        </div>
+      );
+    }
   }
 
   return (
     <PedidoProvider
-      key={new Date(targetDate).toDateString()} // 👈 separa estado por fecha
+      key={`${new Date(targetDate).toDateString()}${isEditMode ? `-edit-${pedidoId}` : ""}`}
       sucursalId={sucursalId}
       initialDateISO={targetDate.toISOString()}
     >
@@ -655,6 +787,8 @@ export default function TipoStockListSucursal(props) {
           className={`btn btn-sm ${esHoy ? "btn-primary" : "btn-outline"}`}
           onClick={cargarHoy}
           type="button"
+          disabled={isEditMode}
+          title={isEditMode ? "No disponible en modo edición" : "Ir a hoy"}
         >
           Hoy
         </button>
@@ -663,28 +797,38 @@ export default function TipoStockListSucursal(props) {
           className={`btn btn-sm ${!esHoy ? "btn-primary" : "btn-outline"}`}
           onClick={cargarAyer}
           type="button"
-          disabled={pedidoAyer}
-          title={pedidoAyer ? "Ya existe un pedido en la fecha de ayer" : "Cargar tipos del día anterior"}
+          disabled={isEditMode || pedidoAyer}
+          title={
+            isEditMode
+              ? "No disponible en modo edición"
+              : (pedidoAyer ? "Ya existe un pedido en la fecha de ayer" : "Cargar tipos del día anterior")
+          }
         >
           Día anterior
         </button>
 
-        {!esHoy && (
-          <span className="text-sm ml-2">
-            Trabajando en: <strong>{targetDate.toLocaleDateString()}</strong>
-          </span>
-        )}
+        <span className="text-sm ml-2">
+          {isEditMode ? (
+            <>Editando pedido <strong>#{pedidoId}</strong> — Fecha: <strong>{targetDate.toLocaleDateString()}</strong></>
+          ) : (
+            !esHoy && <>Trabajando en: <strong>{targetDate.toLocaleDateString()}</strong></>
+          )}
+        </span>
       </div>
 
       <TipoStockContent
         {...props}
         tiposIds={tiposIdsParaRender}
+        isEditMode={isEditMode}         // 👈 NEW
+        pedidoLoaded={pedidoLoaded}     // 👈 NEW
         onPedidoEnviado={async () => {
-          // Actualiza estados después de enviar
+          // Actualiza estados después de enviar/actualizar
           await refreshEstadoPedidos();
-          const esAunHoy = sameLocalDay(targetDate, new Date());
-          if (esAunHoy) setPedidoHoy(true);
-          else setPedidoAyer(true);
+          if (!isEditMode) {
+            const esAunHoy = sameLocalDay(targetDate, new Date());
+            if (esAunHoy) setPedidoHoy(true);
+            else setPedidoAyer(true);
+          }
         }}
       />
     </PedidoProvider>

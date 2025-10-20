@@ -10,7 +10,7 @@ export default function Toolbar({
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-primary" onClick={onCrear}>
-            {tab === "tipo" ? "Crear tipo" : tab === "rubro" ? "Crear rubro" : "Crear insumo"}
+            {tab === "tipo" ? "Crear tipo" : tab === "rubro" ? "Crear rubro" : tab === "unidad" ? "Crear unidad" : "Crear insumo"} 
           </button>
         </div>
 

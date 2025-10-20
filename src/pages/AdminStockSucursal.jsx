@@ -16,6 +16,7 @@ import {
   syncDiasForTipoSucursal,
 } from "../services/disponibilidadStockSucursalService";
 import { getSucursalInsumo, deleteSucursalInsumo } from "../services/sucursalInsumoService";
+import ConfirmDialog from "../components/ConfirmDialog.jsx"; // ⬅️ NUEVO
 
 export default function AdminStockSucursal() {
   const [sucursales, setSucursales] = useState([]);
@@ -30,6 +31,31 @@ export default function AdminStockSucursal() {
   const [loadingInit, setLoadingInit] = useState(true);
   const [loadingSucursal, setLoadingSucursal] = useState(false);
   const [err, setErr] = useState("");
+
+   const [confirm, setConfirm] = useState({
+    open: false,
+    title: "",
+    message: "",
+    confirmLabel: "Confirmar",
+    loading: false,
+    onConfirm: null,
+  });
+
+  const openConfirm = ({ title, message, confirmLabel = "Confirmar", onConfirm }) =>
+    setConfirm({ open: true, title, message, confirmLabel, loading: false, onConfirm });
+
+  const closeConfirm = () =>
+    setConfirm((c) => ({ ...c, open: false, onConfirm: null }));
+
+  const doConfirm = async () => {
+    if (!confirm.onConfirm) return;
+    try {
+      setConfirm((c) => ({ ...c, loading: true }));
+      await confirm.onConfirm();
+    } finally {
+      setConfirm({ open: false, title: "", message: "", confirmLabel: "Confirmar", loading: false, onConfirm: null });
+    }
+  };
 
   // Carga inicial
   useEffect(() => {
@@ -107,6 +133,7 @@ export default function AdminStockSucursal() {
   }, [tiposStock, tiposHabilitados]);
 
   // Quitar insumo (por tipo)
+   // Quitar insumo (por tipo) — lógica real
   const handleQuitarInsumo = async (tipoStockId, insumoId) => {
     const row = (sucursalInsumo || []).find(
       (r) =>
@@ -118,6 +145,15 @@ export default function AdminStockSucursal() {
     await deleteSucursalInsumo(row.id);
     setSucursalInsumo((prev) => prev.filter((r) => r.id !== row.id));
   };
+
+  // ⬅️ NUEVO: pedir confirmación antes de quitar insumo
+  const solicitarQuitarInsumo = (tipoStockId, insumoId) =>
+    openConfirm({
+      title: "Quitar insumo",
+      message: "¿Seguro que deseas quitar este insumo de la sucursal para este tipo?",
+      confirmLabel: "Quitar",
+      onConfirm: () => handleQuitarInsumo(tipoStockId, insumoId),
+    });
 
   // AGREGAR tipo
   const handleAgregarTipo = async (tipoStockId) => {
@@ -135,6 +171,47 @@ export default function AdminStockSucursal() {
       setErr(e?.response?.data?.message ?? "No se pudo agregar la disponibilidad.");
     }
   };
+
+   const handleQuitarTipo = async (tipoStockId) => {
+    // 1) Borrar TODOS los insumos de ese tipo para la sucursal
+    const toDelete = (sucursalInsumo || []).filter(
+      (r) =>
+        Number(r.sucursal_id) === Number(sucursalId) &&
+        Number(r.tipoStock_id) === Number(tipoStockId)
+    );
+    if (toDelete.length) {
+      await Promise.all(toDelete.map((r) => deleteSucursalInsumo(r.id)));
+      setSucursalInsumo((prev) =>
+        prev.filter(
+          (r) =>
+            !(Number(r.sucursal_id) === Number(sucursalId) &&
+              Number(r.tipoStock_id) === Number(tipoStockId))
+        )
+      );
+    }
+
+    // 2) Limpiar días (quitar disponibilidad). Conjunto vacío = sin días
+    await syncDiasForTipoSucursal(Number(sucursalId), Number(tipoStockId), new Set());
+
+    // 3) Actualizar disp local limpiando las filas de ese tipo
+    setDisp((prev) =>
+      prev.filter(
+        (r) =>
+          !(Number(r.sucursalId) === Number(sucursalId) &&
+            Number(r.tipoStockId) === Number(tipoStockId))
+      )
+    );
+  };
+
+  // ⬅️ NUEVO: confirmación para quitar tipo
+  const solicitarQuitarTipo = (tipoStockId) =>
+    openConfirm({
+      title: "Quitar tipo de stock",
+      message:
+        "Esto eliminará todos los insumos de este tipo para la sucursal y también su disponibilidad (días). ¿Deseas continuar?",
+      confirmLabel: "Quitar tipo",
+      onConfirm: () => handleQuitarTipo(tipoStockId),
+    });
 
   // Obtener/guardar días
   const getDiasTipo = (sucId, tipoId) => {
@@ -209,6 +286,9 @@ export default function AdminStockSucursal() {
 
   return (
     <div className="space-y-6">
+      <header className="flex flex-col gap-2">
+        <h1 className="font-display text-2xl">Stock de Sucursales</h1>
+      </header>
       <SelectorSucursal
         sucursales={sucursales}
         value={sucursalId ?? ""}
@@ -234,17 +314,29 @@ export default function AdminStockSucursal() {
           rubros={rubros}
           insumos={insumos}
           sucursalInsumo={sucursalInsumo}
-          onQuitarInsumo={handleQuitarInsumo}
+          onQuitarInsumo={solicitarQuitarInsumo} 
           onAddedSucursalInsumo={handleAddedSucursalInsumo}
           onEditedSucursalInsumo={handleEditedSucursalInsumo}
           onAgregarTipo={handleAgregarTipo}
-          onQuitarTipo={() => {}}
+          onQuitarTipo={solicitarQuitarTipo}  
           getDiasTipo={getDiasTipo}
           setDiasTipo={setDiasTipo}
         />
+
+        
       )}
 
       {err && <p className="text-sm text-red-600">{err}</p>}
+
+        <ConfirmDialog
+        open={confirm.open}
+        title={confirm.title}
+        message={confirm.message}
+        confirmLabel={confirm.confirmLabel}
+        loading={confirm.loading}
+        onCancel={closeConfirm}
+        onConfirm={doConfirm}
+      />
     </div>
   );
 }

@@ -32,7 +32,7 @@ export default function InsumoList({
                 <div className="min-w-0">
                   <p className="font-medium truncate">{ins.nombre}</p>
                   <p className="text-xs opacity-70">
-                    Real: <span className="font-mono">{cr}</span> · Ideal:{" "}
+                    Ideal:{" "}
                     <span className="font-mono">{ci}</span> · Mínima:{" "}
                     <span className="font-mono">{cm}</span>
                   </p>

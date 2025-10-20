@@ -28,18 +28,16 @@ import ModalCrearUnidad from "../features/insumos/ModalCrearUnidad.jsx";
 import ModalEditarUnidad from "../features/insumos/ModalEditarUnidad.jsx";
 import TableUnidades from "../features/insumos/TableUnidades.jsx";
 
+// 🔴 NUEVO: modal de confirmación
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
+
 export default function InsumosPage() {
   const [tiposStock, setTiposStock] = useState([]);
   const [rubros, setRubros] = useState([]);
   const [insumos, setInsumos] = useState([]);
 
-  // unidades desde API (para CRUD) y desde mock para enriquecer insumos
+  // unidades desde API (para CRUD)
   const [unidadesApi, setUnidadesApi] = useState([]);
-
-  /*
-  const [sucursales] = useState(data.Sucursal ?? []);
-  const [sucInsumo, setSucInsumo] = useState(data.SucursalInsumo ?? []);
-*/
 
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroTipoStock, setFiltroTipoStock] = useState("");
@@ -65,6 +63,30 @@ export default function InsumosPage() {
   const [openCreateInsumo, setOpenCreateInsumo] = useState(false);
   const [openModalCrearUnidad, setOpenModalCrearUnidad] = useState(false);
 
+  // 🔴 NUEVO: estado del modal de confirmación
+  const [confirm, setConfirm] = useState({
+    open: false,
+    title: "",
+    message: "",
+    confirmLabel: "Eliminar",
+    loading: false,
+    onConfirm: null,
+  });
+
+  const openConfirm = ({ title, message, confirmLabel = "Eliminar", onConfirm }) => {
+    setConfirm({ open: true, title, message, confirmLabel, loading: false, onConfirm });
+  };
+  const closeConfirm = () => setConfirm((c) => ({ ...c, open: false, onConfirm: null }));
+  const doConfirm = async () => {
+    if (!confirm.onConfirm) return;
+    try {
+      setConfirm((c) => ({ ...c, loading: true }));
+      await confirm.onConfirm();
+    } finally {
+      setConfirm({ open: false, title: "", message: "", confirmLabel: "Eliminar", loading: false, onConfirm: null });
+    }
+  };
+
   useEffect(() => {
     getStockTabla();
     getRubroTabla();
@@ -76,23 +98,19 @@ export default function InsumosPage() {
     const res = await getInsumos();
     setInsumos(res);
   };
-
   const getStockTabla = async () => {
     const res = await getTipoStock();
     setTiposStock(res);
   };
-
   const getRubroTabla = async () => {
     const res = await getRubro();
     setRubros(res);
   };
-
   const getUnidadesTabla = async () => {
     const res = await getUnidadesMedida();
     setUnidadesApi(res ?? []);
   };
 
-  // ===== Enriquecimiento y filtros (usa mock para mostrar nombre de unidad en insumos)
   const unidadesById = useMemo(
     () => Object.fromEntries((unidadesApi ?? []).map((u) => [u.id, u.nombre])),
     [unidadesApi]
@@ -104,14 +122,9 @@ export default function InsumosPage() {
 
   const insumosEnriquecidos = useMemo(() => {
     return (insumos ?? []).map((i) => {
-      const rubro_id =
-        i.rubro_id ?? i.rubroId ?? i.rubro?.id ?? null;
-      const unidadDeMedida_id =
-        i.unidadDeMedida_id ?? i.unidadDeMedidaId ?? i.unidadDeMedida?.id ?? null;
-      const unidadNombre =
-        i.unidadDeMedida?.nombre // si la API ya lo manda, úsalo
-        ?? unidadesById[unidadDeMedida_id]
-        ?? "-";
+      const rubro_id = i.rubro_id ?? i.rubroId ?? i.rubro?.id ?? null;
+      const unidadDeMedida_id = i.unidadDeMedida_id ?? i.unidadDeMedidaId ?? i.unidadDeMedida?.id ?? null;
+      const unidadNombre = i.unidadDeMedida?.nombre ?? unidadesById[unidadDeMedida_id] ?? "-";
       return {
         ...i,
         rubro_id,
@@ -144,7 +157,7 @@ export default function InsumosPage() {
     getStockTabla();
   };
   const abrirEditarTipo = (tipoOrId) => {
-    const t = typeof tipoOrId === "object" ? tipoOrId : tiposStock.find(x => x.id === tipoOrId);
+    const t = typeof tipoOrId === "object" ? tipoOrId : tiposStock.find((x) => x.id === tipoOrId);
     if (!t) return console.error("No se encontró el tipo de stock para editar:", tipoOrId);
     setEditingTipo(t);
     setOpenEditTipo(true);
@@ -157,15 +170,16 @@ export default function InsumosPage() {
     setOpenEditTipo(false);
     setEditingTipo(null);
   };
-  const eliminarTipo = async (id) => {
-    try {
-      await desactivarTipoStock(id);
-      const data = await getTipoStock();
-      setTiposStock(data);
-    } catch (e) {
-      console.error("Error al dar de baja el Tipo Stock:", e);
-    }
-  };
+  // ✅ Reemplazo: pedir confirmación antes de eliminar
+  const solicitarEliminarTipo = (id) =>
+    openConfirm({
+      title: "Eliminar Tipo de Stock",
+      message: "¿Seguro que deseas eliminar este tipo de stock? Esta acción no se puede deshacer.",
+      onConfirm: async () => {
+        await desactivarTipoStock(id);
+        await getStockTabla();
+      },
+    });
 
   // ===== Rubro
   const crearRubro = () => setOpenModalCrearRubro(true);
@@ -187,15 +201,17 @@ export default function InsumosPage() {
     setOpenEditRubro(false);
     setEditingRubro(null);
   };
-  const eliminarRubro = async (id) => {
-    try {
-      await desactivarRubro(id);
-      const data = await getRubro();
-      setRubros(data);
-    } catch (e) {
-      console.error("Error al dar de baja el rubro:", e);
-    }
-  };
+  // ✅ Reemplazo: pedir confirmación antes de eliminar
+  const solicitarEliminarRubro = (id) =>
+    openConfirm({
+      title: "Eliminar Rubro",
+      message: "¿Seguro que deseas eliminar este rubro? Esta acción no se puede deshacer.",
+      onConfirm: async () => {
+        await desactivarRubro(id);
+        const data = await getRubro();
+        setRubros(data);
+      },
+    });
 
   // ===== Insumo
   const crearInsumo = () => setOpenCreateInsumo(true);
@@ -215,8 +231,7 @@ export default function InsumosPage() {
     const normalized = {
       ...raw,
       rubro_id: raw.rubro_id ?? raw.rubroId ?? raw.rubro?.id ?? null,
-      unidadDeMedida_id:
-        raw.unidadDeMedida_id ?? raw.unidadDeMedidaId ?? raw.unidadDeMedida?.id ?? null,
+      unidadDeMedida_id: raw.unidadDeMedida_id ?? raw.unidadDeMedidaId ?? raw.unidadDeMedida?.id ?? null,
     };
     setEditingInsumo(normalized);
     setOpenEditInsumo(true);
@@ -228,15 +243,17 @@ export default function InsumosPage() {
     setOpenEditInsumo(false);
     setEditingInsumo(null);
   };
-  const eliminarInsumo = async (id) => {
-    try {
-      await desactivarInsumo(id);
-      const data = await getInsumos();
-      setInsumos(data);
-    } catch (e) {
-      console.error("Error al dar de baja el insumo:", e);
-    }
-  };
+  // ✅ Reemplazo: pedir confirmación antes de eliminar
+  const solicitarEliminarInsumo = (id) =>
+    openConfirm({
+      title: "Eliminar Insumo",
+      message: "¿Seguro que deseas eliminar este insumo? Esta acción no se puede deshacer.",
+      onConfirm: async () => {
+        await desactivarInsumo(id);
+        const data = await getInsumos();
+        setInsumos(data);
+      },
+    });
 
   // ===== Unidades de medida (NUEVO)
   const crearUnidad = () => setOpenModalCrearUnidad(true);
@@ -258,62 +275,26 @@ export default function InsumosPage() {
     setOpenEditUnidad(false);
     setEditingUnidad(null);
   };
-  const eliminarUnidad = async (id) => {
-    try {
-      await desactivarUnidad(id);
-      await getUnidadesTabla();
-    } catch (e) {
-      console.error("Error al dar de baja la unidad:", e);
-    }
-  };
+  // ✅ Reemplazo: pedir confirmación antes de eliminar
+  const solicitarEliminarUnidad = (id) =>
+    openConfirm({
+      title: "Eliminar Unidad de Medida",
+      message: "¿Seguro que deseas eliminar esta unidad? Esta acción no se puede deshacer.",
+      onConfirm: async () => {
+        await desactivarUnidad(id);
+        await getUnidadesTabla();
+      },
+    });
 
-  {/*
-  // ===== Modal: Disponible en sucursal (insumo)
-  const [openModal, setOpenModal] = useState(false);
-  const [insumoSel, setInsumoSel] = useState(null);
-  const openDisponibilidad = (insumoId) => {
-    const obj = insumos.find((i) => i.id === insumoId) || null;
-    setInsumoSel(obj);
-    setOpenModal(true);
-  };
-  const closeDisponibilidad = () => {
-    setOpenModal(false);
-    setInsumoSel(null);
-  };
-  const selectedSucIds = useMemo(() => {
-    if (!insumoSel) return new Set();
-    return new Set((sucInsumo ?? []).filter((x) => x.insumo_id === insumoSel.id).map((x) => x.sucursal_id));
-  }, [insumoSel, sucInsumo]);
-  const toggleSucursal = (sucursalId) => {
-    if (!insumoSel) return;
-    const idInsumo = insumoSel.id;
-    const existe = sucInsumo.find((si) => si.insumo_id === idInsumo && si.sucursal_id === sucursalId);
-    if (existe) {
-      setSucInsumo((prev) => prev.filter((si) => !(si.insumo_id === idInsumo && si.sucursal_id === sucursalId)));
-    } else {
-      const maxId = sucInsumo.reduce((m, r) => Math.max(m, r.id ?? 0), 0);
-      setSucInsumo((prev) =>
-        prev.concat({
-          id: maxId + 1,
-          sucursal_id: sucursalId,
-          insumo_id: idInsumo,
-          cantidadReal: 0,
-          cantidadIdeal: 0,
-        })
-      );
-    }
-  };
-*/}
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-2">
-        <h1 className="font-display text-2xl">Insumos (Administrador)</h1>
+        <h1 className="font-display text-2xl">Insumos</h1>
         <p className="text-sm" style={{ color: "var(--graphite)" }}>
           Gestioná <strong>Tipos de Stock</strong>, <strong>Rubros</strong>, <strong>Insumos</strong> y <strong>Unidades de medida</strong>.
         </p>
       </header>
 
-      {/* Tabs ahora soporta "unidad" */}
       <Tabs tab={tab} setTab={setTab} />
 
       <Toolbar
@@ -327,28 +308,28 @@ export default function InsumosPage() {
           tab === "tipo" ? crearTipo
           : tab === "rubro" ? crearRubro
           : tab === "insumo" ? crearInsumo
-          : crearUnidad // "unidad"
+          : crearUnidad
         }
       />
 
       {tab === "tipo" && (
-        <TableTipoStock rows={tiposStock} onEditar={abrirEditarTipo} onEliminar={eliminarTipo} />
+        <TableTipoStock rows={tiposStock} onEditar={abrirEditarTipo} onEliminar={solicitarEliminarTipo} />
       )}
 
       {tab === "rubro" && (
-        <TableRubros rows={rubros} onEditar={abrirEditarRubro} onEliminar={eliminarRubro} />
+        <TableRubros rows={rubros} onEditar={abrirEditarRubro} onEliminar={solicitarEliminarRubro} />
       )}
 
       {tab === "insumo" && (
         <TableInsumos
           rows={insumosFiltrados}
           onEditar={abrirEditarInsumo}
-          onEliminar={eliminarInsumo}
+          onEliminar={solicitarEliminarInsumo}
         />
       )}
 
       {tab === "unidad" && (
-        <TableUnidades rows={unidadesApi} onEditar={abrirEditarUnidad} onEliminar={eliminarUnidad} />
+        <TableUnidades rows={unidadesApi} onEditar={abrirEditarUnidad} onEliminar={solicitarEliminarUnidad} />
       )}
 
       {/* Modales de edición */}
@@ -377,17 +358,16 @@ export default function InsumosPage() {
         onSave={guardarEdicionUnidad}
       />
 
-
-      {/* Modal de disponibilidad 
-      <ModalSucursales
-        open={openModal}
-        onClose={closeDisponibilidad}
-        insumo={insumoSel}
-        sucursales={sucursales}
-        selectedIds={selectedSucIds}
-        onToggle={toggleSucursal}
+      {/* 🔴 NUEVO: Modal de confirmación */}
+      <ConfirmDialog
+        open={confirm.open}
+        title={confirm.title}
+        message={confirm.message}
+        confirmLabel={confirm.confirmLabel}
+        loading={confirm.loading}
+        onCancel={closeConfirm}
+        onConfirm={doConfirm}
       />
-      */}
 
       {/* Modales de creación */}
       <ModalCrearTipo open={openModalCrearTipo} onClose={() => setOpenModalCrearTipo(false)} onSave={guardarTipo} />

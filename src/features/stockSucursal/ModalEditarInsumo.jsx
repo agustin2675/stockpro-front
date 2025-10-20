@@ -99,7 +99,7 @@ export default function ModalEditarInsumo({ open, onClose, row, onSaved }) {
       }
     >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
+        {/*<div>
           <label className="block text-sm mb-1">Cantidad Real</label>
           <input
             type="number"
@@ -109,7 +109,7 @@ export default function ModalEditarInsumo({ open, onClose, row, onSaved }) {
             value={cantidadReal}
             onChange={(e) => setCantidadReal(e.target.value)}
           />
-        </div>
+        </div>*/}
         <div>
           <label className="block text-sm mb-1">Cantidad Ideal</label>
           <input
