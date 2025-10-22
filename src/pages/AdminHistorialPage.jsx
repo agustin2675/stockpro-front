@@ -62,15 +62,7 @@ export default function AdminHistorialPage() {
     <div className="space-y-6 p-6 md:p-8">
       {/* Encabezado */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="font-display text-2xl">Página de Encargado de Pedidos</h1>
-        <button
-          onClick={handleLogout}
-          className="btn btn-outline text-sm px-4 py-1 rounded-lg self-start sm:self-auto"
-          style={{ borderColor: "var(--frame)" }}
-          title="Cerrar sesión"
-        >
-          Cerrar sesión
-        </button>
+        <h1 className="font-display text-2xl">Página de Pedidos</h1>
       </header>
 
       {/* ⚠️ Errores */}
